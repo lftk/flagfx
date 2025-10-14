@@ -15,7 +15,7 @@ import (
 // Module is the core `fx.Module` for the flagfx system.
 // It provides the necessary components to parse command-line flags
 // and make their values available for injection into other fx components.
-var Module = fx.Module("flagfx", fx.Provide(defaultFlagSet, defaultArguments, parse))
+var Module = fx.Module("flagfx", fx.Provide(defaultFlagSet, defaultArgs, parse))
 
 // defaultFlagSet provides the default flag set, which is the global flag.CommandLine.
 // This can be replaced using the FlagSet option.
@@ -23,15 +23,15 @@ func defaultFlagSet() *flag.FlagSet {
 	return flag.CommandLine
 }
 
-// defaultArguments provides the default command-line arguments, which are os.Args[1:].
+// defaultArgs provides the default command-line arguments, which are os.Args[1:].
 // This can be replaced using the Args option.
-func defaultArguments() Arguments {
+func defaultArgs() arguments {
 	return os.Args[1:]
 }
 
 // parse is the central function that orchestrates flag registration and parsing.
 // It is invoked by fx after all flag-defining entries have been collected.
-func parse(fs *flag.FlagSet, args Arguments, p params) (*parsed, error) {
+func parse(fs *flag.FlagSet, args arguments, p params) (*parsed, error) {
 	parsed := &parsed{
 		entries: make(map[*entry][]reflect.Value),
 	}
@@ -121,7 +121,9 @@ func Provide(constructors ...any) fx.Option {
 	for _, constructor := range constructors {
 		fn := reflect.ValueOf(constructor)
 		if fn.Kind() != reflect.Func {
-			opts = append(opts, fx.Error(errors.New("flagfx: Provide must be used with functions")))
+			opts = append(opts, fx.Error(
+				errors.New("flagfx: Provide must be used with functions"),
+			))
 			break
 		}
 
@@ -184,13 +186,13 @@ func FlagSet(fs *flag.FlagSet) fx.Option {
 	return fx.Replace(fs)
 }
 
-// Arguments represents the command-line arguments to be parsed.
-type Arguments []string
+// arguments represents the command-line arguments to be parsed.
+type arguments []string
 
 // Args allows replacing the default command-line arguments (os.Args[1:])
 // with a custom slice of strings.
 func Args(args []string) fx.Option {
-	return fx.Replace(Arguments(args))
+	return fx.Replace(arguments(args))
 }
 
 // typeAssert is a compatibility wrapper for reflect.Value.Interface().(T).

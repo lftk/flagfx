@@ -24,7 +24,7 @@ import (
 )
 
 // 1. Define a struct to hold your flag values.
-type config struct {
+type flags struct {
 	name string
 }
 
@@ -35,16 +35,16 @@ func main() {
 
 		// 3. Use flagfx.Provide to define flags.
 		// This constructor will be called before flags are parsed.
-		flagfx.Provide(func(fs *flag.FlagSet) *config {
-			var cfg config
-			fs.StringVar(&cfg.name, "name", "World", "name to greet")
-			return &cfg
+		flagfx.Provide(func(fs *flag.FlagSet) *flags {
+			var f flags
+			fs.StringVar(&f.name, "name", "World", "name to greet")
+			return &f
 		}),
 
 		// 4. Use the parsed flag values in your application.
 		// This fx.Invoke function will run after flags are parsed.
-		fx.Invoke(func(cfg *config) {
-			fmt.Printf("Hello, %s!\n", cfg.name)
+		fx.Invoke(func(f *flags) {
+			fmt.Printf("Hello, %s!\n", f.name)
 		}),
 
 		// Suppress fx's logger for a clean output.

@@ -9,7 +9,7 @@ import (
 	"go.uber.org/fx"
 )
 
-type flagVars struct {
+type flags struct {
 	ShowVersion bool
 }
 
@@ -18,16 +18,16 @@ type version string
 var Module = fx.Module("verfx",
 	// Use flagfx.Provide (instead of fx.Provide) to define flags.
 	flagfx.Provide(
-		func(fs *flag.FlagSet) *flagVars {
-			var v flagVars
-			fs.BoolVar(&v.ShowVersion, "version", false, "show version")
-			return &v
+		func(fs *flag.FlagSet) *flags {
+			var f flags
+			fs.BoolVar(&f.ShowVersion, "version", false, "show version")
+			return &f
 		},
 	),
 	// Invoke a function that checks the flag and acts accordingly.
 	fx.Invoke(
-		func(v *flagVars, ver version) {
-			if v.ShowVersion {
+		func(f *flags, ver version) {
+			if f.ShowVersion {
 				fmt.Println("Version:", ver)
 				os.Exit(0)
 			}
