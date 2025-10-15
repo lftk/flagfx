@@ -15,23 +15,23 @@ import (
 // Module is the core `fx.Module` for the flagfx system.
 // It provides the necessary components to parse command-line flags
 // and make their values available for injection into other fx components.
-var Module = fx.Module("flagfx", fx.Provide(defaultFlagSet, defaultArgs, parse))
+var Module = fx.Module("flagfx", fx.Provide(DefaultFlagSet, DefaultArgs, Parse))
 
-// defaultFlagSet provides the default flag set, which is the global flag.CommandLine.
+// DefaultFlagSet provides the default flag set, which is the global flag.CommandLine.
 // This can be replaced using the FlagSet option.
-func defaultFlagSet() *flag.FlagSet {
+func DefaultFlagSet() *flag.FlagSet {
 	return flag.CommandLine
 }
 
-// defaultArgs provides the default command-line arguments, which are os.Args[1:].
+// DefaultArgs provides the default command-line arguments, which are os.Args[1:].
 // This can be replaced using the Args option.
-func defaultArgs() arguments {
+func DefaultArgs() Arguments {
 	return os.Args[1:]
 }
 
-// parse is the central function that orchestrates flag registration and parsing.
+// Parse is the central function that orchestrates flag registration and parsing.
 // It is invoked by fx after all flag-defining entries have been collected.
-func parse(fs *flag.FlagSet, args arguments, p params) (*parsed, error) {
+func Parse(fs *flag.FlagSet, args Arguments, p params) (*parsed, error) {
 	parsed := &parsed{
 		entries: make(map[*entry][]reflect.Value),
 	}
@@ -86,6 +86,7 @@ var (
 	parsedPtrTypes = []reflect.Type{parsedPtrType}
 	resultType     = reflect.TypeFor[result]()
 	resultTypes    = []reflect.Type{resultType}
+	privateType    = reflect.TypeOf(fx.Private)
 )
 
 // Provide wraps fx.Provide for use with command-line flags.
@@ -116,10 +117,23 @@ func Provide(constructors ...any) fx.Option {
 	//
 	// The dependency flow is: fx.New() -> fn1 -> parse() -> fn2 -> final components.
 
-	var opts []fx.Option
+	var (
+		opts    []fx.Option
+		private bool
+		targets = make([]any, 0, len(constructors))
+	)
 
 	for _, constructor := range constructors {
-		fn := reflect.ValueOf(constructor)
+		v := reflect.TypeOf(constructor)
+		if v == privateType {
+			private = true
+			continue
+		}
+		targets = append(targets, constructor)
+	}
+
+	for _, target := range targets {
+		fn := reflect.ValueOf(target)
 		if fn.Kind() != reflect.Func {
 			opts = append(opts, fx.Error(
 				errors.New("flagfx: Provide must be used with functions"),
@@ -174,7 +188,11 @@ func Provide(constructors ...any) fx.Option {
 			},
 		)
 
-		opts = append(opts, fx.Provide(fn1.Interface(), fn2.Interface()))
+		if private {
+			opts = append(opts, fx.Provide(fn1.Interface(), fn2.Interface(), fx.Private))
+		} else {
+			opts = append(opts, fx.Provide(fn1.Interface(), fn2.Interface()))
+		}
 	}
 
 	return fx.Options(opts...)
@@ -186,13 +204,13 @@ func FlagSet(fs *flag.FlagSet) fx.Option {
 	return fx.Replace(fs)
 }
 
-// arguments represents the command-line arguments to be parsed.
-type arguments []string
+// Arguments represents the command-line Arguments to be parsed.
+type Arguments []string
 
 // Args allows replacing the default command-line arguments (os.Args[1:])
 // with a custom slice of strings.
 func Args(args []string) fx.Option {
-	return fx.Replace(arguments(args))
+	return fx.Replace(Arguments(args))
 }
 
 // typeAssert is a compatibility wrapper for reflect.Value.Interface().(T).
