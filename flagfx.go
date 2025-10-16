@@ -4,7 +4,6 @@
 package flagfx
 
 import (
-	"errors"
 	"flag"
 	"os"
 	"reflect"
@@ -86,7 +85,6 @@ var (
 	parsedPtrTypes = []reflect.Type{parsedPtrType}
 	resultType     = reflect.TypeFor[result]()
 	resultTypes    = []reflect.Type{resultType}
-	privateType    = reflect.TypeOf(fx.Private)
 )
 
 // Provide wraps fx.Provide for use with command-line flags.
@@ -118,29 +116,22 @@ func Provide(constructors ...any) fx.Option {
 	// The dependency flow is: fx.New() -> fn1 -> parse() -> fn2 -> final components.
 
 	var (
-		opts    []fx.Option
-		private bool
-		targets = make([]any, 0, len(constructors))
+		opts  []fx.Option
+		funcs []reflect.Value
+		other []any
 	)
 
 	for _, constructor := range constructors {
-		v := reflect.TypeOf(constructor)
-		if v == privateType {
-			private = true
-			continue
+		v := reflect.ValueOf(constructor)
+		if v.Kind() == reflect.Func {
+			funcs = append(funcs, v)
+		} else {
+			// Collect other fx options (e.g., fx.Private) for pass-through.
+			other = append(other, constructor)
 		}
-		targets = append(targets, constructor)
 	}
 
-	for _, target := range targets {
-		fn := reflect.ValueOf(target)
-		if fn.Kind() != reflect.Func {
-			opts = append(opts, fx.Error(
-				errors.New("flagfx: Provide must be used with functions"),
-			))
-			break
-		}
-
+	for _, fn := range funcs {
 		var (
 			ft  = fn.Type()
 			in  []reflect.Type
@@ -188,11 +179,13 @@ func Provide(constructors ...any) fx.Option {
 			},
 		)
 
-		if private {
-			opts = append(opts, fx.Provide(fn1.Interface(), fn2.Interface(), fx.Private))
-		} else {
-			opts = append(opts, fx.Provide(fn1.Interface(), fn2.Interface()))
+		constructors := []any{
+			fn1.Interface(), fn2.Interface(),
 		}
+		if len(other) > 0 {
+			constructors = append(constructors, other...)
+		}
+		opts = append(opts, fx.Provide(constructors...))
 	}
 
 	return fx.Options(opts...)
