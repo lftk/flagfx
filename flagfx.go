@@ -163,7 +163,7 @@ func Provide(constructors ...any) fx.Option {
 		// fn2 is the Stage 2 provider. It provides the actual results of the constructor
 		// after flags have been parsed.
 		fn2 := reflect.MakeFunc(
-			reflect.FuncOf(parsedPtrTypes, out, false),
+			reflect.FuncOf(parsedPtrTypes, out, ft.IsVariadic()),
 			func(args []reflect.Value) []reflect.Value {
 				// This function should only be called by fx with a single `*parsed` argument.
 				// If this invariant is broken, it's an unrecoverable internal error.
