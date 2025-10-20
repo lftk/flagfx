@@ -2,7 +2,10 @@ module github.com/lftk/flagfx
 
 go 1.24
 
-require go.uber.org/fx v1.24.0
+require (
+	github.com/lftk/fxbarrier v0.1.0
+	go.uber.org/fx v1.24.0
+)
 
 require (
 	go.uber.org/dig v1.19.0 // indirect
